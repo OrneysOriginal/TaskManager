@@ -1,0 +1,5 @@
+venv
+.env
+pyproject.toml
+.idea
+__pycache__
