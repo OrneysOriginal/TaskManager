@@ -17,7 +17,7 @@ user_router = APIRouter(
 
 @user_router.post("/registration/")
 async def register_post(
-    data: SRegistration = Depends(), session: AsyncSession = Depends(get_async_session)
+    data: SRegistration, session: AsyncSession = Depends(get_async_session)
 ) -> dict:
     if not secrets.compare_digest(data.password, data.repeat_password):
         raise HTTPException(
@@ -35,19 +35,18 @@ async def register_post(
             status_code=status.HTTP_409_CONFLICT,
             detail="User with this email or username already registered",
         )
-
     hashed_pwd = hashed_password(data.password)
     user = User(username=data.username, email=data.email, hash_password=hashed_pwd)
     session.add(user)
     await session.commit()
     await session.refresh(user)
-    return {"user": user}
+    return {"status_code": status.HTTP_200_OK}
 
 
 @user_router.post("/login/")
 async def login(
     response: Response,
-    data: SLogin = Depends(),
+    data: SLogin,
     session: AsyncSession = Depends(get_async_session),
 ) -> dict:
     user = await authenticate(data, session)
@@ -64,7 +63,7 @@ async def login(
 
 async def authenticate(
     data: SLogin = Depends(), session: AsyncSession = Depends(get_async_session)
-) -> User:
+):
     query = select(User).filter(User.email == data.email)
     user = await session.execute(query)
     user = user.scalar_one_or_none()

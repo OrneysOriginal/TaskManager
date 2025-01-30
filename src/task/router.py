@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import SECRET_KEY, ALGORITHM
 from database import get_async_session
-from task.schemas import STask
+from task.schemas import STask, SDate
 from task.models import Task
 from user.models import User
 
@@ -29,7 +29,7 @@ def get_token(request: Request) -> str:
 
 async def get_current_user(
     token: str = Depends(get_token), session: AsyncSession = Depends(get_async_session)
-) -> User:
+):
     try:
         token = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except JWTError:
@@ -63,7 +63,7 @@ async def get_current_user(
 
 @task_router.post("/add_task/")
 async def add_task(
-    data: STask = Depends(),
+    data: STask,
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(get_current_user),
 ) -> dict:
@@ -81,23 +81,37 @@ async def add_task(
     session.add(task)
     await session.commit()
     await session.refresh(task)
-    return {"status_code": status.HTTP_200_OK, "task": task}
+    return {"status_code": status.HTTP_200_OK}
 
 
 @task_router.get("/get_all_task/")
 async def get_all_task(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(get_current_user),
-) -> dict:
+):
     query = select(Task).filter(Task.user_id == int(user.id))
     tasks = await session.execute(query)
-    tasks = tasks.mappings().all()
-    return {"status_code": status.HTTP_200_OK, "tasks": tasks}
+    return {"status_code": status.HTTP_200_OK, "tasks": tasks.mappings().all()}
+
+
+@task_router.post("/get_task_by_date/")
+async def get_task_date(
+    data: SDate,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(get_current_user),
+):
+    query = select(Task).filter(
+        (data.end_date > Task.created_at) & (Task.created_at > data.start_date)
+    )
+    tasks = await session.execute(query)
+    return {"status_code": status.HTTP_200_OK, "tasks": tasks.mappings().all()}
 
 
 @task_router.post("/del_task/")
 async def del_task(
-    task_name: str, session: AsyncSession = Depends(get_async_session)
+    task_name: str,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(get_current_user),
 ) -> dict:
     query = select(Task).filter(Task.task_name == task_name)
     check_task = await session.execute(query)

@@ -4,7 +4,7 @@ from passlib.context import CryptContext
 
 
 class User(Base):
-    __tablename__ = "user"
+    __tablename__ = "user_db"
 
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
